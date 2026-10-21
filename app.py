@@ -1,10 +1,13 @@
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
+import os
+import certifi
+
+# នេះជាកូដសំខាន់បំផុត៖ បង្ខំឱ្យ Python ប្រើវិញ្ញាបនបត្រសុវត្ថិភាពថ្មីពី certifi ជំនួសឱ្យរបស់ម៉ាស៊ីនមេ Render ផ្ទាល់
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import yt_dlp
-import os
 import uuid
 
 app = Flask(__name__)
