@@ -50,21 +50,19 @@
 
     <!-- ផ្នែក Footer -->
     <p class="text-xs text-slate-500 mt-8 text-center max-w-xs">
-        ដំណើរការដោយ Render Backend របស់អ្នកផ្ទាល់។
+        ដំណើរការដោយ Cobalt Public API (មិនត្រូវការសិទ្ធិចូលគណនី)។
     </p>
 
-    <!-- កូដ JavaScript សម្រាប់ភ្ជាប់ទៅ Backend -->
+    <!-- កូដ JavaScript សម្រាប់ភ្ជាប់ទៅ API -->
     <script>
-        // នេះគឺជា Link Render របស់អ្នកដែលបានភ្ជាប់រួចរាល់
-        const BACKEND_URL = 'https://app-youtube-download.onrender.com/download';
-
         async function handleDownload() {
-            const urlInput = document.getElementById('urlInput').value;
+            const urlInput = document.getElementById('urlInput').value.trim();
             const statusArea = document.getElementById('statusArea');
             const spinner = document.getElementById('spinner');
             const statusText = document.getElementById('statusText');
             const downloadBtn = document.getElementById('downloadBtn');
 
+            // ពិនិត្យមើល Link
             if (!urlInput.includes("youtube.com") && !urlInput.includes("youtu.be")) {
                 alert("សូមបញ្ចូល Link វីដេអូ YouTube ឱ្យបានត្រឹមត្រូវ!");
                 return;
@@ -73,47 +71,48 @@
             // បង្ហាញ Loading និងបិទប៊ូតុងជាបណ្តោះអាសន្ន
             statusArea.classList.remove('hidden');
             spinner.style.display = 'block';
-            statusText.innerText = "កំពុងទាញយក និងរៀបចំវីដេអូនៅលើ Server... (អាចចំណាយពេលបន្តិច)";
+            statusText.innerText = "កំពុងរៀបចំវីដេអូ... (អាចចំណាយពេលបន្តិច)";
             statusText.className = "text-sm text-yellow-400 mt-3 text-center";
             downloadBtn.disabled = true;
             downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
-                // ផ្ញើ Request ទៅកាន់ Server Render របស់អ្នក
-                const response = await fetch(BACKEND_URL, {
+                // ហៅទៅកាន់ Cobalt API (សេវាកម្មទាញយកឥតគិតថ្លៃ)
+                const response = await fetch('https://api.cobalt.tools/api/json', {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url: urlInput })
+                    body: JSON.stringify({
+                        url: urlInput,
+                        vQuality: "720", // ទាញយកកម្រិត 720p
+                        isAudioOnly: false
+                    })
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'មានបញ្ហាក្នុងការទាញយក');
+                const data = await response.json();
+
+                if (data.status === 'error') {
+                    throw new Error(data.text || "មានបញ្ហាក្នុងការទាញយក");
                 }
 
-                // ទទួល File វីដេអូពី Server ហើយ Save ចូលទូរស័ព្ទ
-                statusText.innerText = "កំពុងរក្សាទុកចូលក្នុងទូរស័ព្ទរបស់អ្នក...";
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = `YouTube_Video_${Math.floor(Math.random() * 1000)}.mp4`; 
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                
-                // បង្ហាញសារជោគជ័យ
-                spinner.style.display = 'none';
-                statusText.innerText = "✅ ទាញយកជោគជ័យ!";
-                statusText.className = "text-sm text-green-400 mt-3 text-center";
+                if (data.url) {
+                    // បើទាញយកបានជោគជ័យ ប្តូរទំព័រទៅកាន់ Link វីដេអូដើម្បី Save
+                    statusText.innerText = "✅ វីដេអូរួចរាល់! កំពុងបើកឯកសារ...";
+                    statusText.className = "text-sm text-green-400 mt-3 text-center";
+                    spinner.style.display = 'none';
+                    
+                    // ប្រើប្រាស់ window.location ដើម្បីឱ្យ iPhone បើកផ្ទាំងវីដេអូឱ្យទាញយក
+                    window.location.href = data.url;
+                } else {
+                    throw new Error("មិនអាចស្វែងរកវីដេអូឃើញទេ។");
+                }
 
             } catch (error) {
                 spinner.style.display = 'none';
                 statusText.innerText = "❌ បរាជ័យ: " + error.message;
                 statusText.className = "text-sm text-red-400 mt-3 text-center";
-                console.error(error);
             } finally {
                 // បើកប៊ូតុងឱ្យចុចបានវិញ
                 downloadBtn.disabled = false;
