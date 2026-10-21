@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <!-- ប្រើ Tailwind CSS សម្រាប់រចនាឱ្យស្អាតលើទូរស័ព្ទ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Khmer OS Siemreap', sans-serif; background-color: #0f172a; color: white; }
+        .loader {
+            border: 4px solid #334155;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
+        <!-- ចំណងជើង -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-white mb-2">ទាញយកវីដេអូ YouTube</h1>
+            <p class="text-sm text-slate-400">សូមបញ្ចូលតំណភ្ជាប់ (Link) វីដេអូនៅខាងក្រោម</p>
+        </div>
+
+        <!-- ប្រអប់បញ្ចូល Link -->
+        <div class="mb-4">
+            <input type="text" id="urlInput" placeholder="ឧទាហរណ៍: https://youtu.be/..." 
+                class="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+        </div>
+
+        <!-- ប៊ូតុងទាញយក -->
+        <button onclick="handleDownload()" id="downloadBtn"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex justify-center items-center gap-2">
+            <span>ទាញយកវីដេអូឥឡូវនេះ</span>
+        </button>
+
+        <!-- កន្លែងបង្ហាញស្ថានភាព (Loading) -->
+        <div id="statusArea" class="mt-6 flex flex-col items-center justify-center hidden">
+            <div class="loader" id="spinner"></div>
+            <p id="statusText" class="text-sm text-blue-400 mt-3 text-center">កំពុងដំណើរការ... សូមរង់ចាំ!</p>
+        </div>
+    </div>
+
+    <!-- ផ្នែក Footer -->
+    <p class="text-xs text-slate-500 mt-8 text-center max-w-xs">
+        ដំណើរការដោយ Render Backend របស់អ្នកផ្ទាល់។
+    </p>
+
+    <!-- កូដ JavaScript សម្រាប់ភ្ជាប់ទៅ Backend -->
+    <script>
+        // នេះគឺជា Link Render របស់អ្នកដែលបានភ្ជាប់រួចរាល់
+        const BACKEND_URL = 'https://app-youtube-download.onrender.com/download';
+
+        async function handleDownload() {
+            const urlInput = document.getElementById('urlInput').value;
+            const statusArea = document.getElementById('statusArea');
+            const spinner = document.getElementById('spinner');
+            const statusText = document.getElementById('statusText');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            if (!urlInput.includes("youtube.com") && !urlInput.includes("youtu.be")) {
+                alert("សូមបញ្ចូល Link វីដេអូ YouTube ឱ្យបានត្រឹមត្រូវ!");
+                return;
+            }
+
+            // បង្ហាញ Loading និងបិទប៊ូតុងជាបណ្តោះអាសន្ន
+            statusArea.classList.remove('hidden');
+            spinner.style.display = 'block';
+            statusText.innerText = "កំពុងទាញយក និងរៀបចំវីដេអូនៅលើ Server... (អាចចំណាយពេលបន្តិច)";
+            statusText.className = "text-sm text-yellow-400 mt-3 text-center";
+            downloadBtn.disabled = true;
+            downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                // ផ្ញើ Request ទៅកាន់ Server Render របស់អ្នក
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: urlInput })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'មានបញ្ហាក្នុងការទាញយក');
+                }
+
+                // ទទួល File វីដេអូពី Server ហើយ Save ចូលទូរស័ព្ទ
+                statusText.innerText = "កំពុងរក្សាទុកចូលក្នុងទូរស័ព្ទរបស់អ្នក...";
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `YouTube_Video_${Math.floor(Math.random() * 1000)}.mp4`; 
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                
+                // បង្ហាញសារជោគជ័យ
+                spinner.style.display = 'none';
+                statusText.innerText = "✅ ទាញយកជោគជ័យ!";
+                statusText.className = "text-sm text-green-400 mt-3 text-center";
+
+            } catch (error) {
+                spinner.style.display = 'none';
+                statusText.innerText = "❌ បរាជ័យ: " + error.message;
+                statusText.className = "text-sm text-red-400 mt-3 text-center";
+                console.error(error);
+            } finally {
+                // បើកប៊ូតុងឱ្យចុចបានវិញ
+                downloadBtn.disabled = false;
+                downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
+</body>
+</html>
